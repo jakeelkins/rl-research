@@ -1,4 +1,5 @@
 import pybullet as p
+import pybullet_utils.bullet_client as bc
 import numpy as np
 import time
 import pybullet_data
@@ -107,17 +108,19 @@ class AttitudeControlEnv(gym.Env):
 
     def __init__(self):
 
-        self.physicsClient = p.connect(p.DIRECT)
+        #self.physicsClient = p.connect(p.DIRECT)
+        self.physicsClient = bc.BulletClient()
+        #self.physicsClient = bc.BulletClient(connection_mode=p.DIRECT)
 
-        p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        self.physicsClient.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-        p.setGravity(0,0,0)
+        self.physicsClient.setGravity(0,0,0)
 
         self.startPos = [0,0,1]
 
-        self.startOrientation = p.getQuaternionFromEuler([0,0,0])
+        self.startOrientation = self.physicsClient.getQuaternionFromEuler([0,0,0])
 
-        self.scID = p.loadURDF("lm50.urdf", self.startPos, self.startOrientation)
+        self.scID = self.physicsClient.loadURDF("lm50.urdf", self.startPos, self.startOrientation)
 
         high = np.array([np.pi, np.pi, np.pi, 1, 1, 1])
 
@@ -137,7 +140,7 @@ class AttitudeControlEnv(gym.Env):
         #initial command/goal
         self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
 
-        self.goalQuat = p.getQuaternionFromEuler(self.goalEuler)
+        self.goalQuat = self.physicsClient.getQuaternionFromEuler(self.goalEuler)
 
         self.goalVec = self._getVectorFromOrn(self.goalQuat)
 
@@ -145,11 +148,11 @@ class AttitudeControlEnv(gym.Env):
 
         #getting state. state vector will be (goalVec, currVec), so (1x6) of floats
         # (Xgoal, Ygoal, Zgoal; Xcurr, Ycurr, Zcurr)
-        scPosition, scOrientation = p.getBasePositionAndOrientation(self.scID)
+        scPosition, scOrientation = self.physicsClient.getBasePositionAndOrientation(self.scID)
         
         currVec = self._getVectorFromOrn(scOrientation)
 
-        scTransVelo, scAngVelo = p.getBaseVelocity(self.scID) #leave this out for now
+        scTransVelo, scAngVelo = self.physicsClient.getBaseVelocity(self.scID) #leave this out for now
 
         self.state = (self.goalVec[0], self.goalVec[1], self.goalVec[2], currVec[0], currVec[1], currVec[2])
 
@@ -167,35 +170,35 @@ class AttitudeControlEnv(gym.Env):
 
         if action == 0:
             #do nothing
-            p.applyExternalTorque(self.scID, -1, [0, 0, 0], p.LINK_FRAME)
+            self.physicsClient.applyExternalTorque(self.scID, -1, [0, 0, 0], p.LINK_FRAME)
         if action == 1:
             # -1 in x
-            p.applyExternalTorque(self.scID, -1, [-1, 0, 0], p.LINK_FRAME)
+            self.physicsClient.applyExternalTorque(self.scID, -1, [-1, 0, 0], p.LINK_FRAME)
         if action == 2:
             # +1 in x
-            p.applyExternalTorque(self.scID, -1, [+1, 0, 0], p.LINK_FRAME)
+            self.physicsClient.applyExternalTorque(self.scID, -1, [+1, 0, 0], p.LINK_FRAME)
         if action == 3:
             # -1 in y
-            p.applyExternalTorque(self.scID, -1, [0, -1, 0], p.LINK_FRAME)
+            self.physicsClient.applyExternalTorque(self.scID, -1, [0, -1, 0], p.LINK_FRAME)
         if action == 4:
             # +1 in y
-            p.applyExternalTorque(self.scID, -1, [0, 1, 0], p.LINK_FRAME)
+            self.physicsClient.applyExternalTorque(self.scID, -1, [0, 1, 0], p.LINK_FRAME)
         if action == 5:
             # -1 in z
-            p.applyExternalTorque(self.scID, -1, [0, 0, -1], p.LINK_FRAME)
+            self.physicsClient.applyExternalTorque(self.scID, -1, [0, 0, -1], p.LINK_FRAME)
         if action == 6:
             # +1 in z
-            p.applyExternalTorque(self.scID, -1, [0, 0, 1], p.LINK_FRAME)
+            self.physicsClient.applyExternalTorque(self.scID, -1, [0, 0, 1], p.LINK_FRAME)
 
         #propagate dynamics
-        p.stepSimulation()
+        self.physicsClient.stepSimulation()
 
         #BIG Q: how do we ensure timetables are correct? on client-side?
 
-        scPosition, scOrientation = p.getBasePositionAndOrientation(self.scID)
-        scEuler = p.getEulerFromQuaternion(scOrientation)
+        scPosition, scOrientation = self.physicsClient.getBasePositionAndOrientation(self.scID)
+        scEuler = self.physicsClient.getEulerFromQuaternion(scOrientation)
 
-        scTransVelo, scAngVelo = p.getBaseVelocity(self.scID)
+        scTransVelo, scAngVelo = self.physicsClient.getBaseVelocity(self.scID)
 
         self.nsteps += 1
         
@@ -211,8 +214,8 @@ class AttitudeControlEnv(gym.Env):
 
         done = abs(scAngVelo[0]) > self.maxAngVelo \
                 or abs(scAngVelo[1]) > self.maxAngVelo \
-                or abs(scAngVelo[2]) > self.maxAngVelo \
-                or self.nsteps >= self.maxsteps
+                or abs(scAngVelo[2]) > self.maxAngVelo# \
+                #or self.nsteps >= self.maxsteps
 
         done = bool(done)
 
@@ -227,7 +230,7 @@ class AttitudeControlEnv(gym.Env):
             reward = np.maximum(0, ((abs(currAngle-self.initialAngle)**3)))
 
             #print('disconnecting')
-            p.disconnect()
+            #self.physicsClient.disconnect()
         
         else:
             if self.steps_beyond_done == 0:
@@ -243,20 +246,21 @@ class AttitudeControlEnv(gym.Env):
 
     def reset(self):
 
-        self.physicsClient = p.connect(p.DIRECT)
+        #self.physicsClient = p.connect(p.DIRECT)
+        self.physicsClient = bc.BulletClient()
 
-        p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        self.physicsClient.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-        p.setGravity(0,0,0)
+        self.physicsClient.setGravity(0,0,0)
 
-        self.scID = p.loadURDF("lm50.urdf", self.startPos, self.startOrientation)
+        self.scID = self.physicsClient.loadURDF("lm50.urdf", self.startPos, self.startOrientation)
 
         self.nsteps = 0
 
         #new command/goal
         self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
 
-        self.goalQuat = p.getQuaternionFromEuler(self.goalEuler)
+        self.goalQuat = self.physicsClient.getQuaternionFromEuler(self.goalEuler)
 
         self.goalVec = self._getVectorFromOrn(self.goalQuat)
 
@@ -264,11 +268,11 @@ class AttitudeControlEnv(gym.Env):
 
         #getting state. state vector will be (goalVec, currVec), so (1x6) of floats
         # (Xgoal, Ygoal, Zgoal; Xcurr, Ycurr, Zcurr)
-        scPosition, scOrientation = p.getBasePositionAndOrientation(self.scID)
+        scPosition, scOrientation = self.physicsClient.getBasePositionAndOrientation(self.scID)
         
         currVec = self._getVectorFromOrn(scOrientation)
 
-        scTransVelo, scAngVelo = p.getBaseVelocity(self.scID) #leave this out for now
+        scTransVelo, scAngVelo = self.physicsClient.getBaseVelocity(self.scID) #leave this out for now
 
         self.state = (self.goalVec[0], self.goalVec[1], self.goalVec[2], currVec[0], currVec[1], currVec[2])
 

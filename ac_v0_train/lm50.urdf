@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+
+<robot name="lm50">
+
+  <!-- colors -->
+  <material name="dark gray">
+    <color rgba="0.51 0.51 0.51 1.0"/>
+  </material>
+  <material name="navy">
+  <color rgba="0 0 0.5 1.0"/>      
+  </material>
+  <material name="black">
+    <color rgba="0 0 0 1.0"/>      
+  </material>
+
+
+
+  <!--main s/c body-->
+  <link name="sc_body">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="7.9"/>
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.2 0.1 0.4" />
+      </geometry>
+      <material name="dark gray"/>
+    </visual>
+  </link>
+  <!-- joint to left solar panel -->
+  <joint name="sc_left_panel" type="fixed">
+    <parent link="sc_body"/>
+    <child link="left_panel"/>
+    <origin rpy="0 0 0" xyz="0 -0.05 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <!-- joint to right solar panel -->
+  <joint name="sc_right_panel" type="fixed">
+    <parent link="sc_body"/>
+    <child link="right_panel"/>
+    <origin rpy="0 0 0" xyz="0 0.05 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <!-- joint to grapple fixture/orientation marker -->
+  <joint name="sc_fixture" type="fixed">
+    <parent link="sc_body"/>
+    <child link="fixture"/>
+    <origin rpy="0 0 0" xyz="0 0 0.21"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+
+  <!-- left solar panel -->
+  <link name="left_panel">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 -0.5 0"/>
+      <mass value="1"/>
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 -0.5 0"/>
+      <geometry>
+        <box size="0.05 1 0.3"/>
+      </geometry>
+      <material name="navy"/>
+    </visual>
+  </link>
+
+  <!-- right solar panel-->
+  <link name="right_panel">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0.5 0"/>
+      <mass value="1"/>
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0.5 0"/>
+      <geometry>
+        <box size="0.05 1 0.3"/>
+      </geometry>
+      <material name="navy"/>
+    </visual>
+  </link>
+
+  <!-- grapple fixture/ orientation marker-->
+  <link name="fixture">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.1"/>
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.09 0.09 0.02"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+  
+  
+</robot>
