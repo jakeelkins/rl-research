@@ -16,7 +16,9 @@ class AttitudeControlEnv(gym.Env):
 
     def _getAngleFromVectors(self, v1, v2):
         #these are always unit vectors when used
-        angle = np.arccos(np.dot(v1, v2))
+
+        #note: clips at -1 to 1 just in case, roundoff was giving dot products >1 (invalid arccos)
+        angle = np.arccos(np.clip(np.dot(v1, v2), -1, 1))
         return angle
 
     def _getAngleFromOrn(self, Orn1, Orn2):
@@ -69,7 +71,9 @@ class AttitudeControlEnv(gym.Env):
         newVector2 = ((s1*v2)+(s2*v1)+(np.cross(v1,v2)), (s1*s2)-(np.dot(v1,v2)))[0]
 
         #now we can do dot product between the 2 vectors to get cosine between two unit vectors
-        angle = np.arccos(np.dot(newVector1, newVector2))
+
+        #NOTE: was a big bug where roundoff error gave a dot here >1, so invalid arccos
+        angle = np.arccos(np.clip(np.dot(newVector1, newVector2), -1, 1))
         
         return angle
 
@@ -106,6 +110,17 @@ class AttitudeControlEnv(gym.Env):
     #-------end toolbox, start actual env-------
 
 
+
+
+
+
+
+
+
+
+
+
+
     def __init__(self):
 
         #self.physicsClient = p.connect(p.DIRECT)
@@ -140,11 +155,19 @@ class AttitudeControlEnv(gym.Env):
         #initial command/goal
         self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
 
+        while np.array_equal(self.goalEuler, np.array([0, 0, 0])):
+            self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
+
         self.goalQuat = self.physicsClient.getQuaternionFromEuler(self.goalEuler)
 
         self.goalVec = self._getVectorFromOrn(self.goalQuat)
 
         self.initialAngle = self._getAngleFromOrn(self.startOrientation, self.goalQuat)
+
+        #avoid div by zero, just in case
+        if self.initialAngle < 0.0001:
+            self.initialAngle = 0.0001
+
 
         #getting state. state vector will be (goalVec, currVec), so (1x6) of floats
         # (Xgoal, Ygoal, Zgoal; Xcurr, Ycurr, Zcurr)
@@ -212,6 +235,8 @@ class AttitudeControlEnv(gym.Env):
         #faster
         currAngle = self._getAngleFromVectors(self.goalVec, currVec)
 
+        #print(f'currAngle: {currAngle*180/np.pi}')
+
         done = abs(scAngVelo[0]) > self.maxAngVelo \
                 or abs(scAngVelo[1]) > self.maxAngVelo \
                 or abs(scAngVelo[2]) > self.maxAngVelo# \
@@ -222,12 +247,12 @@ class AttitudeControlEnv(gym.Env):
         #--------REWARD---------
         if not done:
             #we calculate current angle's difference from initial angle (in radians)
-            reward = np.maximum(0, ((abs(currAngle-self.initialAngle)**3)))
+            reward = np.maximum(0, ((self.initialAngle-currAngle)/(self.initialAngle))**3)
 
         elif self.steps_beyond_done is None:
             # epsiode just ended
             self.steps_beyond_done = 0
-            reward = np.maximum(0, ((abs(currAngle-self.initialAngle)**3)))
+            reward = np.maximum(0, ((self.initialAngle-currAngle)/(self.initialAngle))**3)
 
             #print('disconnecting')
             #self.physicsClient.disconnect()
@@ -237,7 +262,7 @@ class AttitudeControlEnv(gym.Env):
                 logger.warn("You are calling 'step()' even though this environment has already returned done = True. You should always call 'reset()' once you receive 'done = True' -- any further steps are undefined behavior.")
             self.steps_beyond_done += 1
             reward = 0.0
-
+        #print(f'reward from ep: {reward}')
         return np.array(self.state), reward, done, {}
 
 
@@ -260,11 +285,17 @@ class AttitudeControlEnv(gym.Env):
         #new command/goal
         self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
 
+        while np.array_equal(self.goalEuler, np.array([0, 0, 0])):
+            self.goalEuler = (np.random.randint(-np.pi, high=np.pi, size=3))
+
         self.goalQuat = self.physicsClient.getQuaternionFromEuler(self.goalEuler)
 
         self.goalVec = self._getVectorFromOrn(self.goalQuat)
 
         self.initialAngle = self._getAngleFromOrn(self.startOrientation, self.goalQuat)
+
+        if self.initialAngle < 0.001:
+            self.initialAngle = 0.001
 
         #getting state. state vector will be (goalVec, currVec), so (1x6) of floats
         # (Xgoal, Ygoal, Zgoal; Xcurr, Ycurr, Zcurr)
