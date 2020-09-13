@@ -1,5 +1,5 @@
 # rl-research
-Where I was going to put all my research code for future reference...but my good code is Jake Elkins Proprietary(tm). Sorry bois.
+Where I was going to put all my research code for future reference...but my good code is Jake Elkins Proprietary(tm) at the moment. I will get this work to a spot it can have its own repo for reproduction..but when is it a good idea?
 
 - "I'm not a rapper I'm an adapter" - Eminem
 
